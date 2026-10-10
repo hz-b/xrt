@@ -843,7 +843,13 @@ def _diffraction_integral_conv(oeLocal, n, nl, wave, good):
     b = wave.yDiffr[:, np.newaxis] - oeLocal.y[good]
     c = wave.zDiffr[:, np.newaxis] - oeLocal.z[good]
     pathAfter = (a**2 + b**2 + c**2)**0.5
-    ns = (a*n[0] + b*n[1] + c*n[2]) / pathAfter
+    # The normal has to be masked by `good` like a, b and c are, or the second
+    # axes do not line up as soon as anything is clipped on the diffracting
+    # surface. For an aperture n is three scalars and needs no mask, which is
+    # why this only shows with a mirror in the chain; _diffraction_integral_CL
+    # does the equivalent with nl[good] and n broadcast per sample.
+    nm = [nc[good] if np.shape(nc) == np.shape(good) else nc for nc in n]
+    ns = (a*nm[0] + b*nm[1] + c*nm[2]) / pathAfter
     k = oeLocal.E[good] / CHBAR * 1e7  # [mm^-1]
 #    U = k*1j/(4*np.pi) * (nl[good]+ns) *\
 #        np.exp(1j*k*(pathAfter+oeLocal.path[good])) / pathAfter
