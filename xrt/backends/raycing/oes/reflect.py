@@ -382,8 +382,13 @@ class OEMainMethods(object):
         b = lbn.y - prevCenter[1]
         c = lbn.z - prevCenter[2]
         norm = (a**2 + b**2 + c**2)**0.5
+        # float() of a shape-(1,) array was deprecated in NumPy 1.25 and
+        # removed in 2.4.0, so this raises on 2.4 and later and warns on
+        # everything from 1.25 to 2.3. a, b, c and norm are all length 1 here
+        # because lbn is a one-ray beam, so .item() is the same value and works
+        # on every version.
         areaNormalFact = \
-            abs(float((a*lbn.a[0] + b*lbn.b[0] + c*lbn.c[0]) / norm))
+            abs(((a*lbn.a[0] + b*lbn.b[0] + c*lbn.c[0]) / norm).item())
 
         waveGlobal, waveLocal = self.reflect(lb)
         good = (waveLocal.state == 1) | (waveLocal.state == 2)
