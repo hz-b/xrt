@@ -45,15 +45,21 @@ def list_all_devices():
         CPUdevices = []
         GPUdevices = []
         for platform in cl_platforms:
-            try:  # old pyopencl versions:
-                CPUdevices =\
-                    platform.get_devices(
-                        device_type=cl.device_type.CPU)
-                GPUdevices =\
-                    platform.get_devices(
-                        device_type=cl.device_type.GPU)
-            except cl.RuntimeError:
-                pass
+            # A platform without devices of a type raises instead of returning
+            # an empty list: RuntimeError in old pyopencl versions, LogicError
+            # (INVALID_VALUE) from Apple's OpenCL on arm64, which has no CPU
+            # device. Ask for CPU and GPU separately so one does not hide the
+            # other, and catch cl.Error, the base of both.
+            try:
+                CPUdevices = platform.get_devices(
+                    device_type=cl.device_type.CPU)
+            except cl.Error:
+                CPUdevices = []
+            try:
+                GPUdevices = platform.get_devices(
+                    device_type=cl.device_type.GPU)
+            except cl.Error:
+                GPUdevices = []
             if len(CPUdevices) > 0:
                 if len(iDeviceCPU) > 0:
                     if CPUdevices[0].vendor == \
