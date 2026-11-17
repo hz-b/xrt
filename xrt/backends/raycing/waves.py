@@ -702,7 +702,26 @@ def diffract(oeLocal, wave, targetOpenCL=raycing.targetOpenCL,
             waveCL.set_cl(targetOpenCL, precisionOpenCL)
         kcode = _diffraction_integral_CL
 
-    Es, Ep, aE, bE, cE = kcode(oeLocal, n, nl, wave, good)
+    # A mirror's reflect leaves each ray's Es/Ep in the s/p basis of its own
+    # normal (basisAngle away from the pole's). Summed like that, components
+    # that point in different directions would be added as if parallel - on a
+    # strongly curved mirror (normal azimuth tens of degrees across the
+    # footprint) that distorts both components. So the sum is taken in the
+    # basis of the pole, and the result is turned back by the roll alone.
+    turned = None
+    if hasattr(oe, 'rotationSequence') and hasattr(oeLocal, 'Es') and\
+            getattr(oeLocal, 'basisAngle', None) is not None and\
+            len(oeLocal.basisAngle) == len(oeLocal.Es):
+        turned = oeLocal.Es, oeLocal.Ep
+        cosA = np.cos(oeLocal.basisAngle)
+        sinA = np.sin(oeLocal.basisAngle)
+        oeLocal.Es = cosA*turned[0] + sinA*turned[1]
+        oeLocal.Ep = -sinA*turned[0] + cosA*turned[1]
+    try:
+        Es, Ep, aE, bE, cE = kcode(oeLocal, n, nl, wave, good)
+    finally:
+        if turned is not None:
+            oeLocal.Es, oeLocal.Ep = turned
 
     wave.EsAcc += Es
     wave.EpAcc += Ep
@@ -766,7 +785,9 @@ def diffract(oeLocal, wave, targetOpenCL=raycing.targetOpenCL,
             kwargs = {}
             if hasattr(oe, 'local_n2'):
                 kwargs['is2ndXtal'] = True
-            oe.local_to_global(glo, **kwargs)
+            # the field is in the pole's basis (see above), and the normal at
+            # these points, which are not on the surface, means nothing
+            oe.local_to_global(glo, withSurfaceNormal=False, **kwargs)
 
 # rotate abc, coh.matrix, Es, Ep in the local system of the receiving surface
     if hasattr(wave, 'toOE'):
@@ -801,6 +822,9 @@ def diffract(oeLocal, wave, targetOpenCL=raycing.targetOpenCL,
                 oeNormal = list(toOE.local_n(wave.x, wave.y))
             rollAngle = toOE.roll + toOE.positionRoll +\
                 np.arctan2(oeNormal[-3], oeNormal[-1])
+            # as after reflect: each point in the basis of its own normal
+            wave.basisAngle = np.broadcast_to(
+                np.arctan2(oeNormal[-3], oeNormal[-1]), wave.x.shape).copy()
             wave.Jss[:], wave.Jpp[:], wave.Jsp[:] = \
                 rs.rotate_coherency_matrix(wave, slice(None), -rollAngle)
             cosY, sinY = np.cos(rollAngle), np.sin(rollAngle)
