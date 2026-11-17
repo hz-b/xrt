@@ -1210,6 +1210,11 @@ class OE(OEMainMethods):
         return locState
 
     def local_to_global(self, lb, returnBeam=False, **kwargs):
+        # withSurfaceNormal=False turns Es/Ep and the coherency matrix back by
+        # the roll alone. waves.diffract needs that: its points are not on the
+        # surface, so the normal there has no meaning, and its field is in the
+        # basis of the pole already.
+        withSurfaceNormal = kwargs.pop('withSurfaceNormal', True)
         dx, dy, dz = 0, 0, 0
         extraAnglesSign = 1.  # only for pitch and yaw
 
@@ -1254,13 +1259,14 @@ class OE(OEMainMethods):
             if is2ndXtal:
                 raycing.rotate_beam(lb, roll=np.pi)
 
-        if self.isParametric:
-            s, phi, r = self.xyz_to_param(lb.x, lb.y, lb.z)
-            oeNormal = list(self.local_n(s, phi))
-        else:
-            oeNormal = list(self.local_n(lb.x, lb.y))
-        roll = self.roll + self.positionRoll +\
-            np.arctan2(oeNormal[-3], oeNormal[-1])
+        roll = self.roll + self.positionRoll
+        if withSurfaceNormal:
+            if self.isParametric:
+                s, phi, r = self.xyz_to_param(lb.x, lb.y, lb.z)
+                oeNormal = list(self.local_n(s, phi))
+            else:
+                oeNormal = list(self.local_n(lb.x, lb.y))
+            roll = roll + np.arctan2(oeNormal[-3], oeNormal[-1])
         lb.Jss[:], lb.Jpp[:], lb.Jsp[:] =\
             rs.rotate_coherency_matrix(lb, slice(None), roll)
         if hasattr(lb, 'Es'):

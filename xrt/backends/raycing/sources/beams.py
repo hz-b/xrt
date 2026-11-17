@@ -104,7 +104,7 @@ class Beam(object):
                    'phi', 'r', 'theta', 'order', 'accepted',
                    'acceptedE', 'seeded', 'seededI', 'Es', 'Ep',
                    # 'area',
-                   'nRefl', 'sourceWeight']
+                   'nRefl', 'sourceWeight', 'basisAngle']
 
     def __init__(self, nrays=raycing.nrays, copyFrom=None, forceState=False,
                  withNumberOfReflections=False, withAmplitudes=False,

@@ -1066,6 +1066,12 @@ class OEMainMethods(object):
                 cosY, sinY = np.cos(rollAngle), np.sin(rollAngle)
                 lb.Es[goodN], lb.Ep[goodN] = raycing.rotate_y(
                     lb.Es[goodN], lb.Ep[goodN], cosY, -sinY)
+                # Es and Ep of the local beam are now in the s/p basis of
+                # each ray's own normal, turned by basisAngle from the basis
+                # of the pole (roll only). waves.diffract needs one common
+                # basis to sum them and undoes basisAngle there.
+                lb.basisAngle = np.zeros(len(lb.x))
+                lb.basisAngle[goodN] = rollAngle - roll
 
             if findReflectivity:
                 if toWhere in [5, 6, 7]:  # powder,
